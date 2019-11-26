@@ -91,7 +91,7 @@ void Camera::setNewConfiguration(const SpinnakerConfig& config, const uint32_t& 
 
     // Set auto exposure
     setProperty(node_map_, "ExposureMode", config.exposure_mode);
-    setProperty(node_map_, "ExposureAuto", config.exposure_auto);
+    setProperty(node_map_, "ExposureAuto", config.auto_exposure);
 
     // Set sharpness
     if (IsAvailable(node_map_->GetNode("SharpeningEnable")))
@@ -116,7 +116,7 @@ void Camera::setNewConfiguration(const SpinnakerConfig& config, const uint32_t& 
     }
 
     // Set shutter time/speed
-    if (config.exposure_auto.compare(std::string("Off")) == 0)
+    if (config.auto_exposure.compare(std::string("Off")) == 0)
     {
       setProperty(node_map_, "ExposureTime", static_cast<float>(config.exposure_time));
     }
