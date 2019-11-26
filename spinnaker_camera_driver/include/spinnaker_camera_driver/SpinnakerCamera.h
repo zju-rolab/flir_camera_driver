@@ -158,6 +158,8 @@ public:
   */
   void setDesiredCamera(const uint32_t& id);
 
+  void setGigEParameters(bool auto_packet_size, unsigned int packet_size, unsigned int packet_delay);
+
   void setGain(const float& gain);
   int getHeightMax();
   int getWidthMax();

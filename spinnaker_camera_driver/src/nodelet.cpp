@@ -57,6 +57,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <image_transport/image_transport.h>          // ROS library that allows sending compressed images
 #include <camera_info_manager/camera_info_manager.h>  // ROS library that publishes CameraInfo topics
 #include <sensor_msgs/CameraInfo.h>                   // ROS message header for CameraInfo
+#include <cplus_xsens_driver/PacketCounter.h>
 
 #include <wfov_camera_msgs/WFOVImage.h>
 #include <image_exposure_msgs/ExposureSequence.h>  // Message type for configuring gain and white balance.
@@ -70,6 +71,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <fstream>
 #include <string>
+#include <queue>
 
 namespace spinnaker_camera_driver
 {
@@ -298,11 +300,11 @@ private:
 
     // Get GigE camera parameters:
     pnh.param<int>("packet_size", packet_size_, 1400);
-    pnh.param<bool>("auto_packet_size", auto_packet_size_, true);
+    pnh.param<bool>("auto_packet_size", auto_packet_size_, false);
     pnh.param<int>("packet_delay", packet_delay_, 4000);
 
     // TODO(mhosmar):  Set GigE parameters:
-    // spinnaker_.setGigEParameters(auto_packet_size_, packet_size_, packet_delay_);
+    spinnaker_.setGigEParameters(auto_packet_size_, packet_size_, packet_delay_);
 
     // Get the location of our camera config yaml
     std::string camera_info_url;
@@ -370,7 +372,72 @@ private:
     diag_man->addDiagnostic("PowerSupplyVoltage", true, std::make_pair(4.5f, 5.2f), 4.4f, 5.3f);
     diag_man->addDiagnostic("PowerSupplyCurrent", true, std::make_pair(0.4f, 0.6f), 0.3f, 1.0f);
     diag_man->addDiagnostic<int>("DeviceUptime");
-    diag_man->addDiagnostic<int>("U3VMessageChannelID");
+    // diag_man->addDiagnostic<int>("U3VMessageChannelID");
+	pnh.param<int>("sync_div", sync_div_, 25);
+    pnh.param<int>("sync_rem", sync_rem_, 0);
+    pnh.param<bool>("imu_time", imu_time_, false);
+
+    /*subscribe the packet counter*/
+    if (imu_time_)
+    {
+      std::string packet_counter_topic;
+      pnh.param<std::string>("packet_counter_topic", packet_counter_topic, "/xsens/packet_counter");
+      pkt_counter_sub_ = getMTNodeHandle().subscribe(packet_counter_topic, 10, 
+                                                     &spinnaker_camera_driver::SpinnakerCameraNodelet::pktCallback, this);
+    }
+  }
+
+  /*
+   * store the packet counter for poll
+  */
+
+  void pktCallback(const cplus_xsens_driver::PacketCounterConstPtr& msg){
+    if(msg->counter % sync_div_ == static_cast<unsigned int>(sync_rem_))
+    {
+      boost::mutex::scoped_lock lock(pkt_counter_queue_mtx_);
+      pkt_counter_queue_.push(*msg);
+    }
+  }
+
+  /*
+  * sync the time
+  */
+  bool syncTime(ros::Time& sync_time)
+  {
+    sync_time = ros::Time::now();
+
+    boost::mutex::scoped_lock lock(pkt_counter_queue_mtx_);
+    while (!pkt_counter_queue_.empty())
+    {
+      NODELET_DEBUG("pkt_counter_queue_.size() = %d",pkt_counter_queue_.size());
+
+        // cplus_xsens_driver::PacketCounter packet_counter = pkt_counter_queue_.front();
+        // pkt_counter_queue_.pop();
+        // NODELET_DEBUG("now=%f, packet_counter.head.stamp=%f", now.toSec(), packet_counter.header.stamp.toSec());
+        // if (pkt_counter_queue_.empty() || now < packet_counter.header.stamp) 
+        // {
+        //   sync_time = packet_counter.header.stamp;
+        //   NODELET_DEBUG("Synchronized packet counter is %d",packet_counter.counter);
+        //   return true;
+        // }
+        // else
+        // {
+        //   if (now < pkt_counter_queue_.front().header.stamp)
+        //   {
+        //     NODELET_WARN_STREAM("The oldest packet in queue is newer than current time?");
+        //     return false;
+        //   }
+        // }
+      while ( pkt_counter_queue_.size() > 1)
+      {
+        pkt_counter_queue_.pop();
+        sync_time = pkt_counter_queue_.front().header.stamp;
+        return true;
+      }
+                                                            
+    }
+    NODELET_WARN("Failed to find valid packet");  
+    return false;       
   }
 
   /**
@@ -582,9 +649,16 @@ private:
 
             // wfov_image->temperature = spinnaker_.getCameraTemperature();
 
-            ros::Time time = ros::Time::now();
+            ros::Time time = getTimestamp();
             wfov_image->header.stamp = time;
             wfov_image->image.header.stamp = time;
+
+            // TODO (tangli): should remove later
+            if (wfov_image->image.height == 0)
+            {
+              ROS_ERROR("Image height is zero");
+              break;
+            }
 
             // Set the CameraInfo message
             ci_.reset(new sensor_msgs::CameraInfo(cinfo_->getCameraInfo()));
@@ -612,6 +686,11 @@ private:
             }
           }
           catch (CameraTimeoutException& e)
+          {
+            NODELET_WARN("%s", e.what());
+          }
+
+          catch (CameraImageIncompleteException& e)
           {
             NODELET_WARN("%s", e.what());
           }
@@ -654,6 +733,25 @@ private:
     }
   }
 
+  ros::Time getTimestamp()
+  {
+    ros::Time time;
+    if (imu_time_)
+    {
+      if (!syncTime(time))
+      {
+        NODELET_WARN_THROTTLE(1.0, "Failed to retrive time from IMU.");
+        time = ros::Time(0.0);
+      }
+    }
+    else
+    {
+      NODELET_WARN_ONCE("Using ROS time as timestamp");
+      time = ros::Time::now();
+    }
+    
+    return time;
+  }
   /* Class Fields */
   std::shared_ptr<dynamic_reconfigure::Server<spinnaker_camera_driver::SpinnakerConfig> > srv_;  ///< Needed to
                                                                                                  ///  initialize
@@ -672,6 +770,8 @@ private:
   /// constructor
   /// requirements
   ros::Subscriber sub_;  ///< Subscriber for gain and white balance changes.
+  ros::Subscriber pkt_counter_sub_;   ////< Subscribe for packet counter
+
 
   std::mutex connect_mutex_;
 
@@ -711,6 +811,12 @@ private:
 
   /// Configuration:
   spinnaker_camera_driver::SpinnakerConfig config_;
+
+  // Synchronization
+  int sync_div_, sync_rem_;
+  std::queue<cplus_xsens_driver::PacketCounter> pkt_counter_queue_;
+  boost::mutex pkt_counter_queue_mtx_;
+  bool imu_time_;
 };
 
 PLUGINLIB_EXPORT_CLASS(spinnaker_camera_driver::SpinnakerCameraNodelet,

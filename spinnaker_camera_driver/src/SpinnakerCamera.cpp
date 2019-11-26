@@ -237,6 +237,9 @@ void SpinnakerCamera::connect()
         ROS_WARN("SpinnakerCamera::connect: Could not detect camera model name.");
       }
 
+      // TODO
+      camera_->setGigEParameters(auto_packet_size_, packet_size_, packet_delay_);
+
       // Configure chunk data - Enable Metadata
       // SpinnakerCamera::ConfigureChunkData(*node_map_);
     }
@@ -335,8 +338,9 @@ void SpinnakerCamera::grabImage(sensor_msgs::Image* image, const std::string& fr
 
       if (image_ptr->IsIncomplete())
       {
-        throw std::runtime_error("[SpinnakerCamera::grabImage] Image received from camera " + std::to_string(serial_) +
-                                 " is incomplete.");
+        // throw std::runtime_error("[SpinnakerCamera::grabImage] Image received from camera " + std::to_string(serial_) +
+                                //  " is incomplete.");
+        throw CameraImageIncompleteException(serial_);
       }
       else
       {
@@ -461,6 +465,13 @@ void SpinnakerCamera::setTimeout(const double& timeout)
 void SpinnakerCamera::setDesiredCamera(const uint32_t& id)
 {
   serial_ = id;
+}
+
+void SpinnakerCamera::setGigEParameters(bool auto_packet_size, unsigned int packet_size, unsigned int packet_delay)
+{
+  auto_packet_size_ = auto_packet_size;
+  packet_size_ = packet_size;
+  packet_delay_ = packet_delay;
 }
 
 void SpinnakerCamera::ConfigureChunkData(const Spinnaker::GenApi::INodeMap& nodeMap)

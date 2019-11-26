@@ -217,10 +217,18 @@ void Camera::setGain(const float& gain)
   setProperty(node_map_, "Gain", static_cast<float>(gain));
 }
 
-/*
 void Camera::setGigEParameters(bool auto_packet_size, unsigned int packet_size, unsigned int packet_delay)
 {
+  setProperty(node_map_, "GevSCPD", static_cast<int>(packet_delay));
+  setProperty(node_map_,"GevSCPSPacketSize", static_cast<int>(packet_size));
+
+  if (auto_packet_size)
+  {
+    throw std::invalid_argument("Auto packet size not supported yet.");
+  }
 }
+
+/*
 
 void Camera::setupGigEPacketSize(PGRGuid & guid)
 {

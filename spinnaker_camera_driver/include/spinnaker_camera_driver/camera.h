@@ -69,6 +69,15 @@ public:
   Spinnaker::GenApi::CNodePtr
   readProperty(const Spinnaker::GenICam::gcstring property_name);
 
+  /*!
+  * \brief Set parameters relative to GigE cameras.
+  *
+  * \param auto_packet_size Flag stating if packet size should be automatically determined or not.
+  * \param packet_size The packet size value to use if auto_packet_size is false.
+  */
+  // TODO(mhosmar): Implement later
+  void setGigEParameters(bool auto_packet_size, unsigned int packet_size, unsigned int packet_delay);
+
 protected:
   Spinnaker::GenApi::INodeMap* node_map_;
 

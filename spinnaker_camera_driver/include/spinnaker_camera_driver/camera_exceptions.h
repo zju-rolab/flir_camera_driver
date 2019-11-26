@@ -79,4 +79,16 @@ public:
   }
 };
 
+class CameraImageIncompleteException : public std::runtime_error
+{
+public:
+  CameraImageIncompleteException(uint32_t serial) :
+    runtime_error("[SpinnakerCamera::grabImage] Image received from camera " + std::to_string(serial) + " is incomplete.")
+  {
+  }
+  explicit CameraImageIncompleteException(const std::string& msg) : runtime_error(msg.c_str())
+  {
+  }
+};
+
 #endif  // SPINNAKER_CAMERA_DRIVER_CAMERA_EXCEPTIONS_H
