@@ -69,6 +69,8 @@ public:
   Spinnaker::GenApi::CNodePtr
   readProperty(const Spinnaker::GenICam::gcstring property_name);
 
+  bool hasProperty(const Spinnaker::GenICam::gcstring property_name);
+
   /*!
   * \brief Set parameters relative to GigE cameras.
   *

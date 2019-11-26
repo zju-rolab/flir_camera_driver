@@ -44,13 +44,18 @@ void Camera::init()
   width_max_ = width_max_ptr->GetValue();
   // Set Throughput to maximum
   //=====================================
-  setMaxInt(node_map_, "DeviceLinkThroughputLimit");
+  // setMaxInt(node_map_, "DeviceLinkThroughputLimit");
 }
 void Camera::setFrameRate(const float frame_rate)
 {
   // This enables the "AcquisitionFrameRateEnabled"
   //======================================
-  setProperty(node_map_, "AcquisitionFrameRateEnable", true);
+  if (hasProperty("AcquisitionFrameRateEnable"))
+    setProperty(node_map_, "AcquisitionFrameRateEnable", true);
+  else if (hasProperty("AcquisitionFrameRateEnabled"))
+    setProperty(node_map_, "AcquisitionFrameRateEnabled", true);
+  else
+    ROS_WARN("AcquisitionFrameRateEnable or AcquisitionFrameRateEnabled not support");
 
   // This sets the "AcquisitionFrameRate" to X FPS
   // ========================================
@@ -74,7 +79,12 @@ void Camera::setNewConfiguration(const SpinnakerConfig& config, const uint32_t& 
 
     setFrameRate(static_cast<float>(config.acquisition_frame_rate));
     // Set enable after frame rate encase its false
-    setProperty(node_map_, "AcquisitionFrameRateEnable", config.acquisition_frame_rate_enable);
+    if (hasProperty("AcquisitionFrameRateEnable"))
+      setProperty(node_map_, "AcquisitionFrameRateEnable", config.acquisition_frame_rate_enable);
+    else if (hasProperty("AcquisitionFrameRateEnabled"))
+      setProperty(node_map_, "AcquisitionFrameRateEnabled", config.acquisition_frame_rate_enable);
+	else
+	  ROS_WARN("AcquisitionFrameRateEnable or AcquisitionFrameRateEnabled not support");
 
     // Set Trigger and Strobe Settings
     // NOTE: The trigger must be disabled (i.e. TriggerMode = "Off") in order to configure whether the source is
@@ -122,8 +132,23 @@ void Camera::setNewConfiguration(const SpinnakerConfig& config, const uint32_t& 
     }
     else
     {
-      setProperty(node_map_, "AutoExposureExposureTimeUpperLimit",
-                  static_cast<float>(config.auto_exposure_time_upper_limit));
+      if (hasProperty("AutoExposureExposureTimeLowerLimit"))
+        setProperty(node_map_, "AutoExposureExposureTimeLowerLimit",
+                    static_cast<float>(config.auto_exposure_time_lower_limit));
+      else if (hasProperty("AutoExposureTimeLowerLimit"))
+        setProperty(node_map_, "AutoExposureTimeLowerLimit",
+                    static_cast<float>(config.auto_exposure_time_lower_limit));
+	  else
+	    ROS_WARN("AutoExposureExposureTimeLowerLimit or AutoExposureTimeLowerLimit not support");
+
+	  if (hasProperty("AutoExposureExposureTimeUpperLimit"))
+        setProperty(node_map_, "AutoExposureExposureTimeUpperLimit",
+                    static_cast<float>(config.auto_exposure_time_upper_limit));
+	  else if (hasProperty("AutoExposureTimeUpperLimit"))
+		setProperty(node_map_, "AutoExposureTimeUpperLimit",
+                    static_cast<float>(config.auto_exposure_time_upper_limit));
+      else
+      	ROS_WARN("AutoExposureExposureTimeUpperLimit or AutoExposureTimeUpperLimit not support");
     }
 
     // Set gain
@@ -133,6 +158,49 @@ void Camera::setNewConfiguration(const SpinnakerConfig& config, const uint32_t& 
     {
       setProperty(node_map_, "Gain", static_cast<float>(config.gain));
     }
+    else
+    {
+      if (hasProperty("AutoExposureGainLowerLimit"))
+        setProperty(node_map_, "AutoExposureGainLowerLimit",
+                    static_cast<float>(config.auto_gain_lower_limit));
+      else if (hasProperty("AutoGainLowerLimit"))
+        setProperty(node_map_, "AutoGainLowerLimit",
+                    static_cast<float>(config.auto_gain_lower_limit));
+	  else
+	    ROS_WARN("AutoExposureGainLowerLimit or AutoGainLowerLimit not support");
+
+	  if (hasProperty("AutoExposureGainUpperLimit"))
+        setProperty(node_map_, "AutoExposureGainUpperLimit",
+                    static_cast<float>(config.auto_gain_upper_limit));
+      else if (hasProperty("AutoGainUpperLimit"))
+        setProperty(node_map_, "AutoGainUpperLimit",
+                    static_cast<float>(config.auto_gain_upper_limit));
+	  else
+	  {
+	    ROS_WARN("AutoExposureGainUpperLimit or AutoGainUpperLimit not support");
+	  }
+    }
+
+    // Set Grey Level
+    if (hasProperty("AutoExposureTargetGreyValue"))
+    {
+      setProperty(node_map_, "AutoExposureTargetGreyValueAuto", config.auto_grey_level);
+      if (config.auto_grey_level.compare(std::string("Off")) == 0)
+      {
+        setProperty(node_map_, "AutoExposureTargetGreyValue", static_cast<float>(config.grey_level));
+      }
+      else
+      {
+        setProperty(node_map_, "AutoExposureGreyValueLowerLimit",
+                    static_cast<float>(config.auto_grey_level_lower_limit));
+        setProperty(node_map_, "AutoExposureGreyValueUpperLimit",
+                    static_cast<float>(config.auto_grey_level_upper_limit));
+      }
+    }
+    else
+    {
+      ROS_WARN("AutoExposureTargetGreyValue not support");
+    }
 
     // Set brightness
     setProperty(node_map_, "BlackLevel", static_cast<float>(config.brightness));
@@ -140,7 +208,10 @@ void Camera::setNewConfiguration(const SpinnakerConfig& config, const uint32_t& 
     // Set gamma
     if (config.gamma_enable)
     {
-      setProperty(node_map_, "GammaEnable", config.gamma_enable);
+      if (hasProperty("GammaEnable"))
+        setProperty(node_map_, "GammaEnable", config.gamma_enable);
+      else
+        setProperty(node_map_, "GammaEnabled", config.gamma_enable);
       setProperty(node_map_, "Gamma", static_cast<float>(config.gamma));
     }
 
@@ -150,9 +221,9 @@ void Camera::setNewConfiguration(const SpinnakerConfig& config, const uint32_t& 
       setProperty(node_map_, "BalanceWhiteAuto", config.auto_white_balance);
       if (config.auto_white_balance.compare(std::string("Off")) == 0)
       {
-        setProperty(node_map_, "BalanceRatioSelector", "Blue");
+        setProperty(node_map_, "BalanceRatioSelector", std::string("Blue"));
         setProperty(node_map_, "BalanceRatio", static_cast<float>(config.white_balance_blue_ratio));
-        setProperty(node_map_, "BalanceRatioSelector", "Red");
+        setProperty(node_map_, "BalanceRatioSelector", std::string("Red"));
         setProperty(node_map_, "BalanceRatio", static_cast<float>(config.white_balance_red_ratio));
       }
     }
@@ -169,8 +240,14 @@ void Camera::setImageControlFormats(const spinnaker_camera_driver::SpinnakerConf
   // Set Binning and Decimation
   setProperty(node_map_, "BinningHorizontal", config.image_format_x_binning);
   setProperty(node_map_, "BinningVertical", config.image_format_y_binning);
-  setProperty(node_map_, "DecimationHorizontal", config.image_format_x_decimation);
-  setProperty(node_map_, "DecimationVertical", config.image_format_y_decimation);
+  if (hasProperty("DecimationHorizontal"))
+    setProperty(node_map_, "DecimationHorizontal", config.image_format_x_decimation);
+  else
+    ROS_WARN("DecimationHorizontal not support");
+  if (hasProperty("DecimationVertical"))
+    setProperty(node_map_, "DecimationVertical", config.image_format_y_decimation);
+  else
+    ROS_WARN("DecimationVertical not support for");
 
   // Grab the Max values after decimation
   Spinnaker::GenApi::CIntegerPtr height_max_ptr = node_map_->GetNode("HeightMax");
@@ -300,6 +377,23 @@ Spinnaker::GenApi::CNodePtr Camera::readProperty(const Spinnaker::GenICam::gcstr
     throw std::runtime_error("Unable to get parmeter " + property_name);
   }
   return ptr;
+}
+
+bool Camera::hasProperty(const Spinnaker::GenICam::gcstring property_name)
+{
+  Spinnaker::GenApi::CIntegerPtr intPtr = node_map_->GetNode(property_name.c_str());
+  if (Spinnaker::GenApi::IsImplemented(intPtr))
+    return true;
+
+  Spinnaker::GenApi::CFloatPtr floatPtr = node_map_->GetNode(property_name.c_str());
+  if (Spinnaker::GenApi::IsImplemented(floatPtr))
+    return true;
+
+  Spinnaker::GenApi::CBooleanPtr boolPtr = node_map_->GetNode(property_name.c_str());
+  if (Spinnaker::GenApi::IsImplemented(boolPtr))
+    return true;
+
+  return false;
 }
 
 Camera::Camera(Spinnaker::GenApi::INodeMap* node_map)
