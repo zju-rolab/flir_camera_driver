@@ -373,7 +373,10 @@ private:
     diag_man->addDiagnostic("PowerSupplyCurrent", true, std::make_pair(0.4f, 0.6f), 0.3f, 1.0f);
     diag_man->addDiagnostic<int>("DeviceUptime");
     // diag_man->addDiagnostic<int>("U3VMessageChannelID");
-	pnh.param<int>("sync_div", sync_div_, 25);
+    diag_man->addDiagnostic<float>("ExposureTime");
+    diag_man->addDiagnostic<float>("Gain");
+
+    pnh.param<int>("sync_div", sync_div_, 25);
     pnh.param<int>("sync_rem", sync_rem_, 0);
     pnh.param<bool>("imu_time", imu_time_, false);
 
