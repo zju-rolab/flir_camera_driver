@@ -432,12 +432,10 @@ private:
         //   }
         // }
       while ( pkt_counter_queue_.size() > 1)
-      {
         pkt_counter_queue_.pop();
-        sync_time = pkt_counter_queue_.front().header.stamp;
-        return true;
-      }
-                                                            
+      sync_time = pkt_counter_queue_.front().header.stamp;
+      pkt_counter_queue_.pop();
+      return true;                                                      
     }
     NODELET_WARN("Failed to find valid packet");  
     return false;       
