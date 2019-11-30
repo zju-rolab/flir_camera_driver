@@ -651,6 +651,11 @@ private:
             // wfov_image->temperature = spinnaker_.getCameraTemperature();
 
             ros::Time time = getTimestamp();
+            if (time.sec == 0)
+	    {
+		ROS_ERROR("Sync fail");
+		break;
+            }
             wfov_image->header.stamp = time;
             wfov_image->image.header.stamp = time;
 
