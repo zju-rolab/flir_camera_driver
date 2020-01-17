@@ -413,24 +413,6 @@ private:
     while (!pkt_counter_queue_.empty())
     {
       NODELET_DEBUG("pkt_counter_queue_.size() = %d",pkt_counter_queue_.size());
-
-        // cplus_xsens_driver::PacketCounter packet_counter = pkt_counter_queue_.front();
-        // pkt_counter_queue_.pop();
-        // NODELET_DEBUG("now=%f, packet_counter.head.stamp=%f", now.toSec(), packet_counter.header.stamp.toSec());
-        // if (pkt_counter_queue_.empty() || now < packet_counter.header.stamp) 
-        // {
-        //   sync_time = packet_counter.header.stamp;
-        //   NODELET_DEBUG("Synchronized packet counter is %d",packet_counter.counter);
-        //   return true;
-        // }
-        // else
-        // {
-        //   if (now < pkt_counter_queue_.front().header.stamp)
-        //   {
-        //     NODELET_WARN_STREAM("The oldest packet in queue is newer than current time?");
-        //     return false;
-        //   }
-        // }
       while ( pkt_counter_queue_.size() > 1)
       {
         pkt_counter_queue_.pop();
