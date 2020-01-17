@@ -414,12 +414,10 @@ private:
     {
       NODELET_DEBUG("pkt_counter_queue_.size() = %d",pkt_counter_queue_.size());
       while ( pkt_counter_queue_.size() > 1)
-      {
         pkt_counter_queue_.pop();
-        sync_time = pkt_counter_queue_.front().header.stamp;
-        return true;
-      }
-                                                            
+      sync_time = pkt_counter_queue_.front().header.stamp;
+      pkt_counter_queue_.pop();
+      return true;                                                      
     }
     NODELET_WARN("Failed to find valid packet");  
     return false;       
@@ -635,6 +633,11 @@ private:
             // wfov_image->temperature = spinnaker_.getCameraTemperature();
 
             ros::Time time = getTimestamp();
+            if (time.sec == 0)
+	    {
+		ROS_ERROR("Sync fail");
+		break;
+            }
             wfov_image->header.stamp = time;
             wfov_image->image.header.stamp = time;
 
